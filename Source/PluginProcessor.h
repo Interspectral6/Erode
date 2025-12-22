@@ -57,7 +57,10 @@ private:
     //==============================================================================
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioProcessorValueTreeState apvts;
-    
+
+    juce::AudioBuffer<float> delayBuffer;
+    int writePosition = 0;
+    float lfoPhase = 0.0f;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ErodeAudioProcessor)
 };
