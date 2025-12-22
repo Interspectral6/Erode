@@ -31,6 +31,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout ErodeAudioProcessor::createP
         "Amount",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f),
         0.5f));
+    layout.add(std::make_unique<juce::AudioParameterChoice>(
+        "mode",
+        "Mode",
+        juce::StringArray{ "rough", "smooth" },
+        0));
     return layout;
 }
 
@@ -171,6 +176,7 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     float offset = 0.0f;
     float amount = apvts.getRawParameterValue("amount")->load() * 20;
     float lfoFreq = apvts.getRawParameterValue("freq")->load();
+	bool isSmooth = apvts.getRawParameterValue("mode")->load() == 1;
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, numSamples);
@@ -180,16 +186,20 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         lfoPhase += twoPi * lfoFreq / sampleRate;
         if (lfoPhase >= twoPi) lfoPhase -= twoPi;
 
-		int readPosition = writePosition - delayInSamples + static_cast<int>(offset * amount);
+		float readPosition = writePosition - delayInSamples + offset * amount;
 		if (readPosition < 0) readPosition += bufferSize;
-        if (readPosition >= bufferSize) readPosition -= bufferSize;
+		int index0 = static_cast<int>(readPosition) % bufferSize;
+		int index1 = (index0 + 1) % bufferSize;
+        float fraction = 0;
+
+        if (isSmooth) fraction = readPosition - static_cast<int>(readPosition);
 
 		for (int channel = 0; channel < totalNumInputChannels; ++channel) {
 			auto* channelData = buffer.getWritePointer(channel);
 			auto* delayData = delayBuffer.getWritePointer(channel);
 
             const float inputSample = channelData[sample];
-            const float outputSample = delayData[readPosition];
+			const float outputSample = delayData[index0] * (1 - fraction) + delayData[index1] * fraction;
 
             float mix = 0.5f;
             delayData[writePosition] = inputSample;
