@@ -32,9 +32,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout ErodeAudioProcessor::createP
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f),
         0.5f));
     layout.add(std::make_unique<juce::AudioParameterChoice>(
+        "quality",
+        "Quality",
+        juce::StringArray{ "Smooth", "Rough" },
+        0));
+    layout.add(std::make_unique<juce::AudioParameterChoice>(
         "mode",
         "Mode",
-        juce::StringArray{ "rough", "smooth" },
+        juce::StringArray{ "Noise", "Sine" },
         0));
     return layout;
 }
@@ -129,6 +134,13 @@ void ErodeAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 
     writePosition = 0;
     lfoPhase = 0.0f;
+
+    juce::dsp::ProcessSpec spec;
+    spec.sampleRate = sampleRate;
+    spec.maximumBlockSize = samplesPerBlock;
+    spec.numChannels = 1;
+    filter.prepare(spec);
+    filter.setType(juce::dsp::StateVariableTPTFilterType::bandpass);
 }
 
 void ErodeAudioProcessor::releaseResources()
@@ -175,20 +187,35 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     const float sampleRate = getSampleRate();
     float offset = 0.0f;
     float amount = apvts.getRawParameterValue("amount")->load() * 20;
-    float lfoFreq = apvts.getRawParameterValue("freq")->load();
-	bool isSmooth = apvts.getRawParameterValue("mode")->load() == 1;
+    float freq = apvts.getRawParameterValue("freq")->load();
+    float width = apvts.getRawParameterValue("width")->load();
+    float q = juce::jmap(width, 0.0f, 1.0f, 10.0f, 0.5f);
+	bool isSmooth = apvts.getRawParameterValue("quality")->load() == 0;
+    bool isNoise = apvts.getRawParameterValue("mode")->load() == 0;
+
+    if (isNoise) {
+		filter.setCutoffFrequency(freq);
+		filter.setResonance(q);
+    }
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, numSamples);
 
     for (int sample = 0; sample < numSamples; ++sample) {
-        offset = std::sin(lfoPhase);
-        lfoPhase += twoPi * lfoFreq / sampleRate;
-        if (lfoPhase >= twoPi) lfoPhase -= twoPi;
+        if (isNoise) {
+		    offset = rand.nextFloat() * 2.0f - 1.0f;
+			offset = filter.processSample(0, offset);
+		}
+		else {
+			offset = std::sin(lfoPhase);
+			lfoPhase += twoPi * freq / sampleRate;
+			if (lfoPhase >= twoPi) lfoPhase -= twoPi;
+		}
 
 		float readPosition = writePosition - delayInSamples + offset * amount;
-		if (readPosition < 0) readPosition += bufferSize;
-		int index0 = static_cast<int>(readPosition) % bufferSize;
+		while (readPosition < 0) readPosition += bufferSize;
+		while (readPosition >= bufferSize) readPosition -= bufferSize;
+		int index0 = static_cast<int>(readPosition);
 		int index1 = (index0 + 1) % bufferSize;
         float fraction = 0;
 

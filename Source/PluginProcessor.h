@@ -61,6 +61,8 @@ private:
     juce::AudioBuffer<float> delayBuffer;
     int writePosition = 0;
     float lfoPhase = 0.0f;
+    juce::Random rand;
+    juce::dsp::StateVariableTPTFilter<float> filter;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ErodeAudioProcessor)
 };
