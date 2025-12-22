@@ -9,6 +9,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+constexpr float twoPi = juce::MathConstants<float>::twoPi;
 //==============================================================================
 juce::AudioProcessorValueTreeState::ParameterLayout ErodeAudioProcessor::createParameterLayout()
 {
@@ -166,13 +167,22 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     const int numSamples = buffer.getNumSamples();
     const int bufferSize = delayBuffer.getNumSamples();
     const int delayInSamples = static_cast<int>(getSampleRate() * 0.05f);
+    const float sampleRate = getSampleRate();
+    float offset = 0.0f;
+    float amount = apvts.getRawParameterValue("amount")->load() * 20;
+    float lfoFreq = apvts.getRawParameterValue("freq")->load();
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, numSamples);
 
     for (int sample = 0; sample < numSamples; ++sample) {
-		int readPosition = writePosition - delayInSamples;
+        offset = std::sin(lfoPhase);
+        lfoPhase += twoPi * lfoFreq / sampleRate;
+        if (lfoPhase >= twoPi) lfoPhase -= twoPi;
+
+		int readPosition = writePosition - delayInSamples + static_cast<int>(offset * amount);
 		if (readPosition < 0) readPosition += bufferSize;
+        if (readPosition >= bufferSize) readPosition -= bufferSize;
 
 		for (int channel = 0; channel < totalNumInputChannels; ++channel) {
 			auto* channelData = buffer.getWritePointer(channel);
