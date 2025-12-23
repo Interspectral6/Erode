@@ -31,6 +31,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout ErodeAudioProcessor::createP
         "Amount",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f),
         0.5f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "mix",
+        "Mix",
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f),
+        0.5f));
     layout.add(std::make_unique<juce::AudioParameterChoice>(
         "quality",
         "Quality",
@@ -187,6 +192,7 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     const float sampleRate = getSampleRate();
     float offset = 0.0f;
     float amount = apvts.getRawParameterValue("amount")->load() * 20;
+	float mix = apvts.getRawParameterValue("mix")->load();
     float freq = apvts.getRawParameterValue("freq")->load();
     float width = apvts.getRawParameterValue("width")->load();
     float q = juce::jmap(width, 0.0f, 1.0f, 10.0f, 0.5f);
@@ -228,7 +234,6 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
             const float inputSample = channelData[sample];
 			const float outputSample = delayData[index0] * (1 - fraction) + delayData[index1] * fraction;
 
-            float mix = 0.5f;
             delayData[writePosition] = inputSample;
             channelData[sample] = outputSample * mix + inputSample * (1 - mix);
         }
