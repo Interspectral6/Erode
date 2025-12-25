@@ -54,22 +54,27 @@ ErodeAudioProcessorEditor::ErodeAudioProcessorEditor (ErodeAudioProcessor& p)
 	qualityBox.addItem("Smooth", 1);
 	qualityBox.addItem("Rough", 2);
 	qualityBox.setSelectedId(1, juce::dontSendNotification);
+	qualityBox.setJustificationType(juce::Justification::centred);
 	addAndMakeVisible(qualityBox);
-	qualityLabel.setText("Quality", juce::dontSendNotification);
+	/*qualityLabel.setText("Quality", juce::dontSendNotification);
 	qualityLabel.attachToComponent(&qualityBox, false);
 	qualityLabel.setJustificationType(juce::Justification::centred);
-	addAndMakeVisible(qualityLabel);
+	addAndMakeVisible(qualityLabel);*/
 
 	modeBox.addItem("Noise", 1);
 	modeBox.addItem("Sine", 2);
 	modeBox.setSelectedId(1, juce::dontSendNotification);
+	modeBox.setJustificationType(juce::Justification::centred);
 	addAndMakeVisible(modeBox);
-	modeLabel.setText("Mode", juce::dontSendNotification);
+	/*modeLabel.setText("Mode", juce::dontSendNotification);
 	modeLabel.attachToComponent(&modeBox, false);
 	modeLabel.setJustificationType(juce::Justification::centred);
-	addAndMakeVisible(modeLabel);
+	addAndMakeVisible(modeLabel);*/
 
-    setSize (400, 300);
+    setSize(400, 200);
+    setResizable(true, true);
+	setResizeLimits(400, 200, 1200, 600);
+    getConstrainer()->setFixedAspectRatio(2.0);
 }
 
 ErodeAudioProcessorEditor::~ErodeAudioProcessorEditor()
@@ -84,23 +89,47 @@ void ErodeAudioProcessorEditor::paint (juce::Graphics& g)
 
 void ErodeAudioProcessorEditor::resized()
 {
-    // This is generally where you'll want to lay out the positions of any
-    // subcomponents in your editor..
-	juce::Rectangle bounds = getLocalBounds().reduced(20);
-	juce::Rectangle topRow = bounds.removeFromTop(120);
+	auto area = getLocalBounds().toFloat();
 
-	int sliderWidth = topRow.getWidth() / 4;
+	// Margins
+	float margin = 0.07f;
+	area.reduce(area.getWidth() * margin, area.getHeight() * margin);
 
-	freqSlider.setBounds(topRow.removeFromLeft(sliderWidth).reduced(10).withTrimmedTop (15));
-	widthSlider.setBounds(topRow.removeFromLeft(sliderWidth).reduced(10).withTrimmedTop (15));
-	amountSlider.setBounds(topRow.removeFromLeft(sliderWidth).reduced(10).withTrimmedTop (15));
-	mixSlider.setBounds(topRow.removeFromLeft(sliderWidth).reduced(10).withTrimmedTop (15));
+	// Row heights
+	float sliderRowHeight = area.getHeight() * 0.6f;
+	float comboRowHeight = area.getHeight() * 0.2f;
 
-	juce::Rectangle bottomRow = bounds.removeFromTop(60);
-	int comboWidth = bottomRow.getWidth() / 2;
+	// Top row: 4 sliders, evenly distributed
+	auto sliderRow = area.removeFromTop(sliderRowHeight);
+	float sliderPad = sliderRow.getWidth() * 0.025f;
+	float sliderWidth = sliderRow.getWidth() / 4.0f;
+	float sliderHeight = sliderRow.getHeight();
 
-	qualityBox.setBounds(bottomRow.removeFromLeft(comboWidth).reduced(10).withTrimmedTop(15));
-	modeBox.setBounds(bottomRow.removeFromLeft(comboWidth).reduced(10).withTrimmedTop(15));
+	for (int i = 0; i < 4; ++i)
+	{
+		auto col = sliderRow.withTrimmedLeft(i * sliderWidth).withWidth(sliderWidth);
+		col = col.reduced(sliderPad, 0).withTrimmedTop(sliderPad * 2);
 
+		switch (i)
+		{
+		case 0: freqSlider.setBounds(col.toNearestInt()); break;
+		case 1: widthSlider.setBounds(col.toNearestInt()); break;
+		case 2: amountSlider.setBounds(col.toNearestInt()); break;
+		case 3: mixSlider.setBounds(col.toNearestInt()); break;
+		}
+	}
+
+	// Center combo row in the remaining area
+	float remainingHeight = area.getHeight();
+	float comboRowY = area.getY() + (remainingHeight - comboRowHeight) / 2.0f;
+	float comboPad = area.getWidth() * 0.025f;
+	float comboWidth = area.getWidth() / 2.0f;
+
+	juce::Rectangle<float> comboRow(area.getX(), comboRowY, area.getWidth(), comboRowHeight);
+
+	auto leftCombo = comboRow.removeFromLeft(comboWidth).reduced(comboPad, 0);
+	auto rightCombo = comboRow.reduced(comboPad, 0);
+
+	qualityBox.setBounds(leftCombo.toNearestInt());
+	modeBox.setBounds(rightCombo.toNearestInt());
 }
-
