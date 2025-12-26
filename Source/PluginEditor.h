@@ -10,6 +10,7 @@
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
+#include "ErodeLookAndFeel.h"
 
 //==============================================================================
 /**
@@ -50,6 +51,8 @@ private:
 	juce::AudioProcessorValueTreeState::SliderAttachment mixAttachment;
 	juce::AudioProcessorValueTreeState::ComboBoxAttachment qualityAttachment;
 	juce::AudioProcessorValueTreeState::ComboBoxAttachment modeAttachment;
+
+	ErodeLookAndFeel erodeLnf;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ErodeAudioProcessorEditor)
 };

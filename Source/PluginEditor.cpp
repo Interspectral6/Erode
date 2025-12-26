@@ -71,6 +71,7 @@ ErodeAudioProcessorEditor::ErodeAudioProcessorEditor (ErodeAudioProcessor& p)
 	modeLabel.setJustificationType(juce::Justification::centred);
 	addAndMakeVisible(modeLabel);*/
 
+	setLookAndFeel(&erodeLnf);
     setSize(400, 200);
     setResizable(true, true);
 	setResizeLimits(400, 200, 1200, 600);
@@ -79,6 +80,7 @@ ErodeAudioProcessorEditor::ErodeAudioProcessorEditor (ErodeAudioProcessor& p)
 
 ErodeAudioProcessorEditor::~ErodeAudioProcessorEditor()
 {
+	setLookAndFeel(nullptr);
 }
 
 //==============================================================================
@@ -91,15 +93,21 @@ void ErodeAudioProcessorEditor::resized()
 {
 	auto area = getLocalBounds().toFloat();
 
-	// Margins
+	int textBoxWidth = getWidth() * 0.13f;
+	int textBoxHeight = getHeight() * 0.09f;
+	for (auto* s : { &freqSlider, &widthSlider, &amountSlider, &mixSlider })
+		s->setTextBoxStyle(juce::Slider::TextBoxBelow, false, textBoxWidth, textBoxHeight);
+	
+	float fontSize = getHeight() * 0.07f;
+	for (auto* l : { &freqLabel, &widthLabel, &amountLabel, &mixLabel })
+		l->setFont(juce::Font(fontSize, juce::Font::bold));
+
 	float margin = 0.07f;
 	area.reduce(area.getWidth() * margin, area.getHeight() * margin);
 
-	// Row heights
 	float sliderRowHeight = area.getHeight() * 0.6f;
 	float comboRowHeight = area.getHeight() * 0.2f;
 
-	// Top row: 4 sliders, evenly distributed
 	auto sliderRow = area.removeFromTop(sliderRowHeight);
 	float sliderPad = sliderRow.getWidth() * 0.025f;
 	float sliderWidth = sliderRow.getWidth() / 4.0f;
