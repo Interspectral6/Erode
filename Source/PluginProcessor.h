@@ -65,6 +65,7 @@ private:
     float lfoPhase = 0.0f;
     juce::Random rand;
     juce::dsp::StateVariableTPTFilter<float> filter;
+    juce::dsp::IIR::Filter<float> outputHPF;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ErodeAudioProcessor)
 };

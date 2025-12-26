@@ -11,12 +11,12 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 #include "ErodeLookAndFeel.h"
+#include "NoiseFilterDisplay.h"
 
 //==============================================================================
 /**
 */
-class ErodeAudioProcessorEditor  : public juce::AudioProcessorEditor
-{
+class ErodeAudioProcessorEditor  : public juce::AudioProcessorEditor {
 public:
     ErodeAudioProcessorEditor (ErodeAudioProcessor&);
     ~ErodeAudioProcessorEditor() override;
@@ -33,26 +33,20 @@ private:
     juce::Slider freqSlider;
 	juce::Slider widthSlider;
 	juce::Slider amountSlider;
-	juce::Slider mixSlider;
-
-	juce::ComboBox qualityBox;
-	juce::ComboBox modeBox;
+	juce::Slider cutSlider;
 
 	juce::Label freqLabel;
 	juce::Label widthLabel;
 	juce::Label amountLabel;
-	juce::Label mixLabel;
-	juce::Label qualityLabel;
-	juce::Label modeLabel;
+	juce::Label cutLabel;
 
 	juce::AudioProcessorValueTreeState::SliderAttachment freqAttachment;
 	juce::AudioProcessorValueTreeState::SliderAttachment widthAttachment;
 	juce::AudioProcessorValueTreeState::SliderAttachment amountAttachment;
-	juce::AudioProcessorValueTreeState::SliderAttachment mixAttachment;
-	juce::AudioProcessorValueTreeState::ComboBoxAttachment qualityAttachment;
-	juce::AudioProcessorValueTreeState::ComboBoxAttachment modeAttachment;
-
+	juce::AudioProcessorValueTreeState::SliderAttachment cutAttachment;
 	ErodeLookAndFeel erodeLnf;
+
+	NoiseFilterDisplay filterDisplay;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ErodeAudioProcessorEditor)
 };

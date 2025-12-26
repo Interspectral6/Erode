@@ -4,6 +4,10 @@
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
   <MAINGROUP id="zNskUZ" name="Erode">
     <GROUP id="{A6E0ADF1-69D1-7847-F457-C632714860BA}" name="Source">
+      <FILE id="thPnS7" name="NoiseFilterDisplay.cpp" compile="1" resource="0"
+            file="Source/NoiseFilterDisplay.cpp"/>
+      <FILE id="iWfygQ" name="NoiseFilterDisplay.h" compile="0" resource="0"
+            file="Source/NoiseFilterDisplay.h"/>
       <FILE id="VcuiKj" name="ErodeLookAndFeel.cpp" compile="1" resource="0"
             file="Source/ErodeLookAndFeel.cpp"/>
       <FILE id="uJxmjp" name="ErodeLookAndFeel.h" compile="0" resource="0"

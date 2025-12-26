@@ -15,9 +15,8 @@ ErodeAudioProcessorEditor::ErodeAudioProcessorEditor (ErodeAudioProcessor& p)
     freqAttachment(p.getAPVTS(), "freq", freqSlider),
 	widthAttachment(p.getAPVTS(), "width", widthSlider),
 	amountAttachment(p.getAPVTS(), "amount", amountSlider),
-	mixAttachment(p.getAPVTS(), "mix", mixSlider),
-	qualityAttachment(p.getAPVTS(), "quality", qualityBox),
-	modeAttachment(p.getAPVTS(), "mode", modeBox)
+	cutAttachment(p.getAPVTS(), "cut", cutSlider),
+	filterDisplay(p.getAPVTS())
 {
     freqSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
     freqSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
@@ -43,33 +42,14 @@ ErodeAudioProcessorEditor::ErodeAudioProcessorEditor (ErodeAudioProcessor& p)
 	amountLabel.setJustificationType(juce::Justification::centred);
 	addAndMakeVisible(amountLabel);
 
-	mixSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
-    mixSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
-	addAndMakeVisible(mixSlider);
-	mixLabel.setText("Mix", juce::dontSendNotification);
-	mixLabel.attachToComponent(&mixSlider, false);
-	mixLabel.setJustificationType(juce::Justification::centred);
-	addAndMakeVisible(mixLabel);
-
-	qualityBox.addItem("Smooth", 1);
-	qualityBox.addItem("Rough", 2);
-	qualityBox.setSelectedId(1, juce::dontSendNotification);
-	qualityBox.setJustificationType(juce::Justification::centred);
-	addAndMakeVisible(qualityBox);
-	/*qualityLabel.setText("Quality", juce::dontSendNotification);
-	qualityLabel.attachToComponent(&qualityBox, false);
-	qualityLabel.setJustificationType(juce::Justification::centred);
-	addAndMakeVisible(qualityLabel);*/
-
-	modeBox.addItem("Noise", 1);
-	modeBox.addItem("Sine", 2);
-	modeBox.setSelectedId(1, juce::dontSendNotification);
-	modeBox.setJustificationType(juce::Justification::centred);
-	addAndMakeVisible(modeBox);
-	/*modeLabel.setText("Mode", juce::dontSendNotification);
-	modeLabel.attachToComponent(&modeBox, false);
-	modeLabel.setJustificationType(juce::Justification::centred);
-	addAndMakeVisible(modeLabel);*/
+	cutSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+    cutSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
+	addAndMakeVisible(cutSlider);
+	cutLabel.setText("Cut", juce::dontSendNotification);
+	cutLabel.attachToComponent(&cutSlider, false);
+	cutLabel.setJustificationType(juce::Justification::centred);
+	addAndMakeVisible(cutLabel);
+	addAndMakeVisible(filterDisplay);
 
 	setLookAndFeel(&erodeLnf);
     setSize(400, 200);
@@ -92,30 +72,27 @@ void ErodeAudioProcessorEditor::paint (juce::Graphics& g)
 void ErodeAudioProcessorEditor::resized()
 {
 	auto area = getLocalBounds().toFloat();
+	filterDisplay.setBounds(area.removeFromTop(getHeight() * 0.4f).toNearestInt());
 
-	int textBoxWidth = getWidth() * 0.13f;
-	int textBoxHeight = getHeight() * 0.09f;
-	for (auto* s : { &freqSlider, &widthSlider, &amountSlider, &mixSlider })
+	int textBoxWidth = getWidth() * 0.14f;
+	int textBoxHeight = getHeight() * 0.1f;
+	for (auto* s : { &freqSlider, &widthSlider, &amountSlider, &cutSlider })
 		s->setTextBoxStyle(juce::Slider::TextBoxBelow, false, textBoxWidth, textBoxHeight);
 	
-	float fontSize = getHeight() * 0.07f;
-	for (auto* l : { &freqLabel, &widthLabel, &amountLabel, &mixLabel })
-		l->setFont(juce::Font(fontSize, juce::Font::bold));
+	float fontSize = getHeight() * 0.08f;
+	for (auto* l : { &freqLabel, &widthLabel, &amountLabel, &cutLabel })
+		l->setFont(juce::Font(fontSize));
 
 	float margin = 0.07f;
-	area.reduce(area.getWidth() * margin, area.getHeight() * margin);
+	area.reduce(area.getWidth() * margin, area.getHeight() * margin * 2);
 
-	float sliderRowHeight = area.getHeight() * 0.6f;
-	float comboRowHeight = area.getHeight() * 0.2f;
-
-	auto sliderRow = area.removeFromTop(sliderRowHeight);
-	float sliderPad = sliderRow.getWidth() * 0.025f;
-	float sliderWidth = sliderRow.getWidth() / 4.0f;
-	float sliderHeight = sliderRow.getHeight();
+	float sliderPad = area.getWidth() * 0.025f;
+	float sliderWidth = area.getWidth() / 4.0f;
+	float sliderHeight = area.getHeight();
 
 	for (int i = 0; i < 4; ++i)
 	{
-		auto col = sliderRow.withTrimmedLeft(i * sliderWidth).withWidth(sliderWidth);
+		auto col = area.withTrimmedLeft(i * sliderWidth).withWidth(sliderWidth);
 		col = col.reduced(sliderPad, 0).withTrimmedTop(sliderPad * 2);
 
 		switch (i)
@@ -123,21 +100,7 @@ void ErodeAudioProcessorEditor::resized()
 		case 0: freqSlider.setBounds(col.toNearestInt()); break;
 		case 1: widthSlider.setBounds(col.toNearestInt()); break;
 		case 2: amountSlider.setBounds(col.toNearestInt()); break;
-		case 3: mixSlider.setBounds(col.toNearestInt()); break;
+		case 3: cutSlider.setBounds(col.toNearestInt()); break;
 		}
 	}
-
-	// Center combo row in the remaining area
-	float remainingHeight = area.getHeight();
-	float comboRowY = area.getY() + (remainingHeight - comboRowHeight) / 2.0f;
-	float comboPad = area.getWidth() * 0.025f;
-	float comboWidth = area.getWidth() / 2.0f;
-
-	juce::Rectangle<float> comboRow(area.getX(), comboRowY, area.getWidth(), comboRowHeight);
-
-	auto leftCombo = comboRow.removeFromLeft(comboWidth).reduced(comboPad, 0);
-	auto rightCombo = comboRow.reduced(comboPad, 0);
-
-	qualityBox.setBounds(leftCombo.toNearestInt());
-	modeBox.setBounds(rightCombo.toNearestInt());
 }

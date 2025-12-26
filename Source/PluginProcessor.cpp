@@ -32,20 +32,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout ErodeAudioProcessor::createP
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f),
         0.5f));
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        "mix",
-        "Mix",
-        juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f),
-        0.5f));
-    layout.add(std::make_unique<juce::AudioParameterChoice>(
-        "quality",
-        "Quality",
-        juce::StringArray{ "Smooth", "Rough" },
-        0));
-    layout.add(std::make_unique<juce::AudioParameterChoice>(
-        "mode",
-        "Mode",
-        juce::StringArray{ "Noise", "Sine" },
-        0));
+        "cut",
+        "Cut",
+        juce::NormalisableRange<float>(20.0f, 20000.0f, 1.0f, 0.3f),
+        20.0f));
     return layout;
 }
 
@@ -146,6 +136,8 @@ void ErodeAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     spec.numChannels = 1;
     filter.prepare(spec);
     filter.setType(juce::dsp::StateVariableTPTFilterType::bandpass);
+    outputHPF.reset();
+	outputHPF.coefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, 2000.0f, 0.7f);
 }
 
 void ErodeAudioProcessor::releaseResources()
@@ -191,51 +183,57 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     const int delayInSamples = static_cast<int>(getSampleRate() * 0.05f);
     const float sampleRate = getSampleRate();
     float offset = 0.0f;
-    float amount = apvts.getRawParameterValue("amount")->load() * 20;
-	float mix = apvts.getRawParameterValue("mix")->load();
+    float noise = 0.0f;
+    float sine = 0.0f;
+    float mix = apvts.getRawParameterValue("amount")->load();
+    float amount = mix * 20.0f;
     float freq = apvts.getRawParameterValue("freq")->load();
     float width = apvts.getRawParameterValue("width")->load();
-    float q = juce::jmap(width, 0.0f, 1.0f, 10.0f, 0.5f);
-	bool isSmooth = apvts.getRawParameterValue("quality")->load() == 0;
-    bool isNoise = apvts.getRawParameterValue("mode")->load() == 0;
+    float minQ = 0.5f;
+    float maxQ = 30.0f;
+    float q = minQ * std::pow(maxQ / minQ, 1.0f - width);
+    float sineAmount = 1.0f - std::pow(width, 0.5f);
+    float noiseAmount = 1.0f - sineAmount;
+	float hpfFreq = apvts.getRawParameterValue("cut")->load();
+	outputHPF.coefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, hpfFreq, 0.7f);
 
-    if (isNoise) {
-		filter.setCutoffFrequency(freq);
-		filter.setResonance(q);
-    }
+	filter.setCutoffFrequency(freq);
+	filter.setResonance(q);
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, numSamples);
 
     for (int sample = 0; sample < numSamples; ++sample) {
-        if (isNoise) {
-		    offset = rand.nextFloat() * 2.0f - 1.0f;
-			offset = filter.processSample(0, offset);
-		}
-		else {
-			offset = std::sin(lfoPhase);
-			lfoPhase += twoPi * freq / sampleRate;
-			if (lfoPhase >= twoPi) lfoPhase -= twoPi;
-		}
+		noise = rand.nextFloat() * 2.0f - 1.0f;
+		noise = filter.processSample(0, noise) * std::pow(width, 0.2f);
+		noise = std::tanh(noise);
+
+		sine = std::sin(lfoPhase);
+		lfoPhase += twoPi * freq / sampleRate;
+		if (lfoPhase >= twoPi) lfoPhase -= twoPi;
+
+		offset = noiseAmount * noise + sineAmount * sine;
 
 		float readPosition = writePosition - delayInSamples + offset * amount;
 		while (readPosition < 0) readPosition += bufferSize;
 		while (readPosition >= bufferSize) readPosition -= bufferSize;
 		int index0 = static_cast<int>(readPosition);
 		int index1 = (index0 + 1) % bufferSize;
-        float fraction = 0;
-
-        if (isSmooth) fraction = readPosition - static_cast<int>(readPosition);
+        float fraction = readPosition - static_cast<int>(readPosition);
 
 		for (int channel = 0; channel < totalNumInputChannels; ++channel) {
 			auto* channelData = buffer.getWritePointer(channel);
 			auto* delayData = delayBuffer.getWritePointer(channel);
 
             const float inputSample = channelData[sample];
-			const float outputSample = delayData[index0] * (1 - fraction) + delayData[index1] * fraction;
+			float outputSample = delayData[index0] * (1 - fraction) + delayData[index1] * fraction;
+            outputSample = outputHPF.processSample(outputSample);
 
             delayData[writePosition] = inputSample;
             channelData[sample] = outputSample * mix + inputSample * (1 - mix);
+
+            // For testing the modulator wave
+            //channelData[sample] = offset;
         }
         writePosition++;
         if (writePosition >= bufferSize) writePosition = 0;

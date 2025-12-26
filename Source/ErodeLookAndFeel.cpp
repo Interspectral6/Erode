@@ -57,35 +57,11 @@ void ErodeLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int wi
     }
 }
 
-//void ErodeLookAndFeel::drawPopupMenuBackground(juce::Graphics& g, int width, int height) {
-//    auto bg = findColour(juce::PopupMenu::backgroundColourId);
-//    g.setColour(bg);
-//    g.fillRect(0, 0, width, height);
-//    g.setColour(juce::Colours::white);
-//    g.drawRect(0, 0, width, height, 1);
-//}
-
-void ErodeLookAndFeel::drawPopupMenuItem(juce::Graphics& g, const juce::Rectangle<int>& area, bool isSeparator,
-    bool isActive, bool isHighlighted, bool /*isTicked*/, bool /*hasSubMenu*/,
-    const juce::String& text, const juce::String&, const juce::Drawable*, const juce::Colour* textColour)
-{
-    auto innerArea = area;
-    innerArea.reduce(1, 0); // leave border visible
-    if (isHighlighted)
-        g.setColour(findColour(juce::PopupMenu::highlightedBackgroundColourId));
-    else
-        g.setColour(findColour(juce::PopupMenu::backgroundColourId));
-    g.fillRect(innerArea);
-
-    g.setColour(textColour != nullptr ? *textColour : juce::Colours::white);
-    g.setFont(area.getHeight() * 0.5f);
-    g.drawText(text, innerArea, juce::Justification::centred, true);
-}
 
 juce::Label* ErodeLookAndFeel::createSliderTextBox(juce::Slider& slider) {
     auto* l = new juce::Label();
 	float height = juce::jmax(slider.getHeight() * 0.2f, 15.0f);
-    l->setFont(juce::Font(height, juce::Font::bold));
+    l->setFont(juce::Font(height));
     l->setJustificationType(juce::Justification::centred);
     l->setColour(juce::Label::backgroundColourId, juce::Colour(0xff232323));
     l->setColour(juce::Label::textColourId, juce::Colours::white);
@@ -93,9 +69,3 @@ juce::Label* ErodeLookAndFeel::createSliderTextBox(juce::Slider& slider) {
     l->setBorderSize(juce::BorderSize<int>(6));
     return l;
 }
-
-juce::Font ErodeLookAndFeel::getComboBoxFont(juce::ComboBox& box)
-{
-    return juce::Font(box.getHeight() * 0.5f, juce::Font::plain);
-}
-
