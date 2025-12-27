@@ -16,7 +16,7 @@ ErodeAudioProcessorEditor::ErodeAudioProcessorEditor (ErodeAudioProcessor& p)
 	widthAttachment(p.getAPVTS(), "width", widthSlider),
 	amountAttachment(p.getAPVTS(), "amount", amountSlider),
 	cutAttachment(p.getAPVTS(), "cut", cutSlider),
-	filterDisplay(p.getAPVTS())
+	filterDisplay(p, p.getAPVTS())
 {
     freqSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
     freqSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
@@ -71,6 +71,7 @@ void ErodeAudioProcessorEditor::paint (juce::Graphics& g)
 
 void ErodeAudioProcessorEditor::resized()
 {
+	DBG("resized");
 	auto area = getLocalBounds().toFloat();
 	filterDisplay.setBounds(area.removeFromTop(getHeight() * 0.4f).toNearestInt());
 

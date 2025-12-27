@@ -55,6 +55,15 @@ public:
 
 	juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }
 
+    static constexpr int fftOrder = 11;
+	static constexpr int fftSize = 1 << fftOrder; // fftSize = 2^fftOrder
+
+	juce::dsp::IIR::Filter<float> outputHPF;
+    juce::AudioBuffer<float> outputBuffer;
+    std::atomic<int> outputWritePos = 0;
+	juce::AudioBuffer<float> inputBuffer;
+	std::atomic<int> inputWritePos = 0;
+
 private:
     //==============================================================================
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -65,7 +74,6 @@ private:
     float lfoPhase = 0.0f;
     juce::Random rand;
     juce::dsp::StateVariableTPTFilter<float> filter;
-    juce::dsp::IIR::Filter<float> outputHPF;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ErodeAudioProcessor)
 };

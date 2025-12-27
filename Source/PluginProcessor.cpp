@@ -126,7 +126,7 @@ void ErodeAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 	const int numSamples = static_cast<int>(sampleRate * 0.1); // 100 ms max delay
     delayBuffer.setSize(getTotalNumOutputChannels(), numSamples);
     delayBuffer.clear();
-
+	
     writePosition = 0;
     lfoPhase = 0.0f;
 
@@ -137,7 +137,14 @@ void ErodeAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     filter.prepare(spec);
     filter.setType(juce::dsp::StateVariableTPTFilterType::bandpass);
     outputHPF.reset();
-	outputHPF.coefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, 2000.0f, 0.7f);
+	outputHPF.coefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, 2000.0f, 0.5f);
+    
+	outputBuffer.setSize(1, fftSize);
+    outputBuffer.clear();
+    outputWritePos = 0;
+	inputBuffer.setSize(1, fftSize);
+    inputBuffer.clear();
+	inputWritePos = 0;
 }
 
 void ErodeAudioProcessor::releaseResources()
@@ -153,11 +160,7 @@ bool ErodeAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) co
     juce::ignoreUnused (layouts);
     return true;
   #else
-    // This is the place where you check if the layout is supported.
-    // In this template code we only support mono or stereo.
-    // Some plugin hosts, such as certain GarageBand versions, will only
-    // load plugins that support stereo bus layouts.
-    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
+      if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
      && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
 
@@ -192,7 +195,7 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     float minQ = 0.5f;
     float maxQ = 30.0f;
     float q = minQ * std::pow(maxQ / minQ, 1.0f - width);
-    float sineAmount = 1.0f - std::pow(width, 0.5f);
+    float sineAmount = 1.0f - std::pow(width, 0.7f); // Lower coefficient means less sine
     float noiseAmount = 1.0f - sineAmount;
 	float hpfFreq = apvts.getRawParameterValue("cut")->load();
 	outputHPF.coefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, hpfFreq, 0.7f);
@@ -200,18 +203,24 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 	filter.setCutoffFrequency(freq);
 	filter.setResonance(q);
 
+    float outputMonoSum = 0.0f;
+	float inputMonoSum = 0.0f;
+
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, numSamples);
 
     for (int sample = 0; sample < numSamples; ++sample) {
 		noise = rand.nextFloat() * 2.0f - 1.0f;
-		noise = filter.processSample(0, noise) * std::pow(width, 0.2f);
+        
+        // std::pow here is to balance the loudness of noise, since higher q means louder
+		noise = filter.processSample(0, noise) * std::pow(width, 0.2f); // Lower coefficient means more noise
 		noise = std::tanh(noise);
 
 		sine = std::sin(lfoPhase);
 		lfoPhase += twoPi * freq / sampleRate;
 		if (lfoPhase >= twoPi) lfoPhase -= twoPi;
 
+        // Crossfade between noise and sine
 		offset = noiseAmount * noise + sineAmount * sine;
 
 		float readPosition = writePosition - delayInSamples + offset * amount;
@@ -221,20 +230,35 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 		int index1 = (index0 + 1) % bufferSize;
         float fraction = readPosition - static_cast<int>(readPosition);
 
+		outputMonoSum = 0.0f;
+        inputMonoSum = 0.0f;
+
 		for (int channel = 0; channel < totalNumInputChannels; ++channel) {
 			auto* channelData = buffer.getWritePointer(channel);
 			auto* delayData = delayBuffer.getWritePointer(channel);
 
-            const float inputSample = channelData[sample];
+            float inputSample = channelData[sample];
 			float outputSample = delayData[index0] * (1 - fraction) + delayData[index1] * fraction;
-            outputSample = outputHPF.processSample(outputSample);
-
+            outputSample = outputHPF.processSample(outputSample) * mix;
             delayData[writePosition] = inputSample;
-            channelData[sample] = outputSample * mix + inputSample * (1 - mix);
+			inputSample *= (1.0f - mix);
 
+			outputMonoSum += outputSample;
+            inputMonoSum += inputSample;
+
+            channelData[sample] = outputSample + inputSample;
+            
             // For testing the modulator wave
             //channelData[sample] = offset;
         }
+		outputMonoSum /= static_cast<float>(totalNumInputChannels);
+		outputBuffer.setSample(0, outputWritePos, outputMonoSum);
+		outputWritePos++;
+		if (outputWritePos >= fftSize) outputWritePos = 0;
+		inputMonoSum /= static_cast<float>(totalNumInputChannels);
+		inputBuffer.setSample(0, inputWritePos, inputMonoSum);
+		if (inputWritePos >= fftSize) inputWritePos = 0;
+		inputWritePos++;
         writePosition++;
         if (writePosition >= bufferSize) writePosition = 0;
     }
