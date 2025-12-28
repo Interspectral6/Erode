@@ -257,8 +257,8 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 		if (outputWritePos >= fftSize) outputWritePos = 0;
 		inputMonoSum /= static_cast<float>(totalNumInputChannels);
 		inputBuffer.setSample(0, inputWritePos, inputMonoSum);
-		if (inputWritePos >= fftSize) inputWritePos = 0;
 		inputWritePos++;
+		if (inputWritePos >= fftSize) inputWritePos = 0;
         writePosition++;
         if (writePosition >= bufferSize) writePosition = 0;
     }

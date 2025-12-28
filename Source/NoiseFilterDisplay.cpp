@@ -12,6 +12,8 @@ NoiseFilterDisplay::NoiseFilterDisplay(ErodeAudioProcessor& p, juce::AudioProces
 	window(p.fftSize, juce::dsp::WindowingFunction<float>::hann)
 {
     startTimerHz(60);
+	setMouseClickGrabsKeyboardFocus(false);
+	setWantsKeyboardFocus(false);
 }
 
 void NoiseFilterDisplay::timerCallback()
@@ -107,4 +109,60 @@ void NoiseFilterDisplay::paint(juce::Graphics& g)
 void NoiseFilterDisplay::resized()
 {
     // No child components
+}
+
+void NoiseFilterDisplay::mouseDown(const juce::MouseEvent& e)
+{
+    // Get current freq/width
+    float freq = apvts.getRawParameterValue("freq")->load();
+    float width = apvts.getRawParameterValue("width")->load();
+
+    // Calculate band rectangle
+    auto area = getLocalBounds().toFloat();
+    auto freqToX = [area](float hz) {
+        float norm = std::log10(hz / 20.0f) / std::log10(20000.0f / 20.0f);
+        return area.getX() + norm * area.getWidth();
+        };
+    float centerX = freqToX(freq);
+    float bandWidth = area.getWidth() * juce::jmap(width, 0.0f, 1.0f, 0.01f, 0.5f);
+    juce::Rectangle<float> bandRect(centerX - bandWidth * 0.5f, area.getY(), bandWidth, area.getHeight());
+
+    if (bandRect.contains(e.position))
+    {
+        draggingBand = true;
+        dragStart = e.position;
+        startFreq = freq;
+        startWidth = width;
+    }
+}
+
+void NoiseFilterDisplay::mouseDrag(const juce::MouseEvent& e)
+{
+    if (!draggingBand)
+        return;
+
+    auto area = getLocalBounds().toFloat();
+
+    // Horizontal drag: freq
+    float dx = e.position.x - dragStart.x;
+    float freqNorm = std::log10(startFreq / 20.0f) / std::log10(20000.0f / 20.0f);
+    freqNorm += dx / area.getWidth();
+    freqNorm = juce::jlimit(0.0f, 1.0f, freqNorm);
+    float newFreq = 20.0f * std::pow(20000.0f / 20.0f, freqNorm);
+
+    // Vertical drag: width
+    float dy = e.position.y - dragStart.y;
+    float newWidth = juce::jlimit(0.0f, 1.0f, startWidth - dy / area.getHeight());
+
+    auto *freqParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter("freq"));
+    auto* widthParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter("width"));
+    if (freqParam)
+        freqParam->setValueNotifyingHost(freqParam->convertTo0to1(newFreq));
+    if (widthParam)
+        widthParam->setValueNotifyingHost(widthParam->convertTo0to1(newWidth));
+}
+
+void NoiseFilterDisplay::mouseUp(const juce::MouseEvent&)
+{
+    draggingBand = false;
 }

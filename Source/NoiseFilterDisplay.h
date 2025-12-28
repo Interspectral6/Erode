@@ -21,5 +21,13 @@ private:
     std::vector<float> infftData;
     std::vector<float> inMagnitudes;
     juce::dsp::WindowingFunction<float> window;
+    juce::Point<float> dragStart;
+    float startFreq = 0.0f;
+	float startWidth = 0.0f;
+    bool draggingBand = false;
+
     void timerCallback() override;
+	void mouseDown(const juce::MouseEvent& e) override;
+	void mouseDrag(const juce::MouseEvent& e) override;
+	void mouseUp(const juce::MouseEvent& e) override;
 };

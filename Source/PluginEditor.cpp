@@ -11,7 +11,7 @@
 
 //==============================================================================
 ErodeAudioProcessorEditor::ErodeAudioProcessorEditor (ErodeAudioProcessor& p)
-	: AudioProcessorEditor(&p), audioProcessor(p), 
+	: AudioProcessorEditor(&p), audioProcessor(p), tolltipWindow(this),
     freqAttachment(p.getAPVTS(), "freq", freqSlider),
 	widthAttachment(p.getAPVTS(), "width", widthSlider),
 	amountAttachment(p.getAPVTS(), "amount", amountSlider),
@@ -20,6 +20,7 @@ ErodeAudioProcessorEditor::ErodeAudioProcessorEditor (ErodeAudioProcessor& p)
 {
     freqSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
     freqSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
+	freqSlider.setTooltip("Center frequency of the modulator");
 	addAndMakeVisible(freqSlider);
 	freqLabel.setText("Freq", juce::dontSendNotification);
 	freqLabel.attachToComponent(&freqSlider, false);

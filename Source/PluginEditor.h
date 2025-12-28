@@ -48,5 +48,7 @@ private:
 
 	NoiseFilterDisplay filterDisplay;
 
+	juce::TooltipWindow tolltipWindow { this };
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ErodeAudioProcessorEditor)
 };
