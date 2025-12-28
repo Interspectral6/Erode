@@ -72,7 +72,6 @@ void ErodeAudioProcessorEditor::paint (juce::Graphics& g)
 
 void ErodeAudioProcessorEditor::resized()
 {
-	DBG("resized");
 	auto area = getLocalBounds().toFloat();
 	filterDisplay.setBounds(area.removeFromTop(getHeight() * 0.4f).toNearestInt());
 

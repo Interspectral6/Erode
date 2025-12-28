@@ -14,6 +14,7 @@ ErodeLookAndFeel::ErodeLookAndFeel() {
 
 }
 
+// Entirely copied from juce_LookAndFeel_V4.cpp but without thumb
 void ErodeLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height, float sliderPos,
                                        const float rotaryStartAngle, const float rotaryEndAngle, juce::Slider& slider)
 {
@@ -57,7 +58,7 @@ void ErodeLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int wi
     }
 }
 
-
+// Added scaling
 juce::Label* ErodeLookAndFeel::createSliderTextBox(juce::Slider& slider) {
     auto* l = new juce::Label();
 	float height = juce::jmax(slider.getHeight() * 0.2f, 15.0f);

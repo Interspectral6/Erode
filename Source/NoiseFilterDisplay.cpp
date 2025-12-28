@@ -18,6 +18,7 @@ NoiseFilterDisplay::NoiseFilterDisplay(ErodeAudioProcessor& p, juce::AudioProces
 
 void NoiseFilterDisplay::timerCallback()
 {
+    // Perform FFT for spectrum display
     int outputWritePos = p.outputWritePos;
     auto& outputBuffer = p.outputBuffer;
     for (int i = 0; i < p.fftSize; ++i) {
@@ -47,7 +48,7 @@ void NoiseFilterDisplay::timerCallback()
         float re = infftData[2 * i];
         float im = infftData[2 * i + 1];
 		float mag = std::sqrt(re * re + im * im);
-        inMagnitudes[i] = juce::jmax(mag, inMagnitudes[i] * 0.97f); // peak hold smoothing
+        inMagnitudes[i] = juce::jmax(mag, inMagnitudes[i] * 0.97f);    
     }
     repaint();
 }
@@ -92,17 +93,14 @@ void NoiseFilterDisplay::paint(juce::Graphics& g)
 
     float freq = apvts.getRawParameterValue("freq")->load();
     float width = apvts.getRawParameterValue("width")->load();
-
-    // Draw frequency axis
-    /*g.setColour(juce::Colours::grey);
-    g.fillRect(area.getX(), area.getCentreY(), area.getWidth(),1.0f);*/
+	float amount = apvts.getRawParameterValue("amount")->load();
 
     // Map freq (20Hz-20kHz) to X
     float centerX = freqToX(freq);
     float bandWidth = area.getWidth() * juce::jmap(width, 0.0f, 1.0f, 0.01f, 0.5f);
 
     // Draw bandpass region
-    g.setColour(juce::Colours::deepskyblue.withAlpha(0.5f));
+    g.setColour(juce::Colours::deepskyblue.withAlpha(0.5f + (amount - 0.5f) * 0.3f));
     g.fillRect(centerX - bandWidth * 0.5f, area.getY(), bandWidth, area.getHeight());
 }
 
@@ -154,8 +152,8 @@ void NoiseFilterDisplay::mouseDrag(const juce::MouseEvent& e)
     float dy = e.position.y - dragStart.y;
     float newWidth = juce::jlimit(0.0f, 1.0f, startWidth - dy / area.getHeight());
 
-    auto *freqParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter("freq"));
-    auto* widthParam = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter("width"));
+    auto* freqParam = apvts.getParameter("freq");
+    auto* widthParam = apvts.getParameter("width");
     if (freqParam)
         freqParam->setValueNotifyingHost(freqParam->convertTo0to1(newFreq));
     if (widthParam)
