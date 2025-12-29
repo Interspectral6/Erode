@@ -23,6 +23,10 @@ An audio effect inspired by Ableton's Erosion.
 - **Spectrum Display:**  
   - Drag band horizontally to change frequency  
   - Drag band vertically to change width
+ 
+## Install Instructions
+- Download Erode.vst3.zip from the release
+- place the plugin in your vst3 folder (By default it's C:\Program Files\Common Files\VST3 for Windows, Library/Audio/Plug-ins/VST for MacOS)
 
 ## Build Instructions
 
