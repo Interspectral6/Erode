@@ -25,7 +25,7 @@ An audio effect inspired by Ableton's Erosion.
   - Drag band vertically to change width
  
 ## Install Instructions
-- Download Erode.vst3.zip from the release
+- Download and unzip Erode.vst3.zip from the release
 - place the plugin in your vst3 folder (By default it's C:\Program Files\Common Files\VST3 for Windows, Library/Audio/Plug-ins/VST for MacOS)
 
 ## Build Instructions
