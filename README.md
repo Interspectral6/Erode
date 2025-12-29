@@ -1,9 +1,10 @@
 # Erode
 An audio effect inspired by Ableton's Erosion.
+
 ![screenshot](screenshot.png)
 
 ## Demo
-![Erode demo](https://www.youtube.com/watch?v=I-n5yw1lSFw)
+[Erode demo](https://www.youtube.com/watch?v=I-n5yw1lSFw)
 
 ## Features
 
