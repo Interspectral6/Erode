@@ -26,7 +26,7 @@ An audio effect inspired by Ableton's Erosion.
  
 ## Install Instructions
 - Download and unzip Erode.vst3.zip from the release
-- place the plugin in your vst3 folder (By default it's C:\Program Files\Common Files\VST3 for Windows, Library/Audio/Plug-ins/VST for MacOS)
+- Place the plugin in your vst3 folder (By default it's C:\Program Files\Common Files\VST3 for Windows, Library/Audio/Plug-ins/VST for MacOS)
 
 ## Build Instructions
 
