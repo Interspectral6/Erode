@@ -145,6 +145,9 @@ void ErodeAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 	inputBuffer.setSize(1, fftSize);
     inputBuffer.clear();
 	inputWritePos = 0;
+
+	smoothedAmount.reset(sampleRate, 0.05);
+	smoothedAmount.setCurrentAndTargetValue(apvts.getRawParameterValue("amount")->load());
 }
 
 void ErodeAudioProcessor::releaseResources()
@@ -188,7 +191,9 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     float offset = 0.0f;
     float noise = 0.0f;
     float sine = 0.0f;
-    float mix = apvts.getRawParameterValue("amount")->load();
+	smoothedAmount.setTargetValue(apvts.getRawParameterValue("amount")->load());
+	float sAmount = smoothedAmount.getNextValue();
+	float mix = sAmount;
     float amount = mix * 20.0f;
     float freq = apvts.getRawParameterValue("freq")->load();
     float width = apvts.getRawParameterValue("width")->load();
@@ -197,8 +202,9 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     float q = minQ * std::pow(maxQ / minQ, 1.0f - width);
     float sineAmount = 1.0f - std::pow(width, 0.7f); // Lower coefficient means less sine
     float noiseAmount = 1.0f - sineAmount;
-	float hpfFreq = apvts.getRawParameterValue("cut")->load();
-	outputHPF.coefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, hpfFreq, 0.7f);
+	smoothedCut.setTargetValue(apvts.getRawParameterValue("cut")->load());
+	float sCut = smoothedCut.getNextValue();
+	outputHPF.coefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, sCut, 0.5f);
 
 	filter.setCutoffFrequency(freq);
 	filter.setResonance(q);
@@ -210,6 +216,14 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         buffer.clear (i, 0, numSamples);
 
     for (int sample = 0; sample < numSamples; ++sample) {
+        // Smoothing per sample
+		sAmount = smoothedAmount.getNextValue();
+		mix = sAmount;
+		amount = mix * 20.0f;
+
+		sCut = smoothedCut.getNextValue();
+        outputHPF.coefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, sCut, 0.5f);
+
 		noise = rand.nextFloat() * 2.0f - 1.0f;
         
         // std::pow here is to balance the loudness of noise, since higher q means louder
