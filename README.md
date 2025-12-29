@@ -1,5 +1,5 @@
 # Erode
-An audio effect inspired by Ableton's Erosion.
+An audio effect inspired by Ableton's Erosion, but can morph between noise and sine modulation.
 
 ![screenshot](screenshot.png)
 
