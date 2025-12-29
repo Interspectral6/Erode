@@ -1,6 +1,9 @@
 # Erode
 An audio effect inspired by Ableton's Erosion.
-[Demo Video](demo.mp4)
+![screenshot](screenshot.png)
+
+## Demo
+![Erode demo](https://www.youtube.com/watch?v=I-n5yw1lSFw)
 
 ## Features
 
@@ -12,7 +15,7 @@ An audio effect inspired by Ableton's Erosion.
 
 ## Controls
 
-- **Freq:** Center frequency of the modulator/filter (20 Hz – 20 kHz)
+- **Freq:** Center frequency of the modulator/filter (20 Hz - 20 kHz)
 - **Width:** Bandwidth of the filter (0 = narrow/sine, 1 = wide/noise)
 - **Amount:** Modulation depth and wet/dry mix
 - **Cut:** Output high-pass filter cutoff (20 Hz - 20 kHz)
