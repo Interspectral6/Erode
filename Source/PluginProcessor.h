@@ -58,7 +58,7 @@ public:
     static constexpr int fftOrder = 11;
 	static constexpr int fftSize = 1 << fftOrder; // fftSize = 2^fftOrder
 
-	juce::dsp::IIR::Filter<float> outputHPF;
+	std::vector<juce::dsp::IIR::Filter<float>> outputHPF;
     juce::AudioBuffer<float> outputBuffer;
     std::atomic<int> outputWritePos = 0;
 	juce::AudioBuffer<float> inputBuffer;

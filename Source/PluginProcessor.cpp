@@ -124,7 +124,7 @@ void ErodeAudioProcessor::changeProgramName (int index, const juce::String& newN
 void ErodeAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
 	const int numSamples = static_cast<int>(sampleRate * 0.1); // 100 ms max delay
-    delayBuffer.setSize(getTotalNumOutputChannels(), numSamples);
+    delayBuffer.setSize(getTotalNumOutputChannels(), 100);
     delayBuffer.clear();
 	
     writePosition = 0;
@@ -136,8 +136,12 @@ void ErodeAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     spec.numChannels = 1;
     filter.prepare(spec);
     filter.setType(juce::dsp::StateVariableTPTFilterType::bandpass);
-    outputHPF.reset();
-	outputHPF.coefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, 2000.0f, 0.5f);
+    outputHPF.resize(getTotalNumInputChannels());
+    for (auto& hpf : outputHPF) {
+		hpf.reset();
+		hpf.coefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, 2000.0f, 0.5f);
+    }
+ 
     
 	outputBuffer.setSize(1, fftSize);
     outputBuffer.clear();
@@ -186,7 +190,6 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 
     const int numSamples = buffer.getNumSamples();
     const int bufferSize = delayBuffer.getNumSamples();
-    const int delayInSamples = static_cast<int>(getSampleRate() * 0.05f);
     const float sampleRate = getSampleRate();
     float offset = 0.0f;
     float noise = 0.0f;
@@ -195,6 +198,7 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 	float sAmount = smoothedAmount.getNextValue();
 	float mix = sAmount;
     float amount = mix * 20.0f;
+    int delayInSamples = 30;
     float freq = apvts.getRawParameterValue("freq")->load();
     float width = apvts.getRawParameterValue("width")->load();
     float minQ = 0.5f;
@@ -204,7 +208,9 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     float noiseAmount = 1.0f - sineAmount;
 	smoothedCut.setTargetValue(apvts.getRawParameterValue("cut")->load());
 	float sCut = smoothedCut.getNextValue();
-	outputHPF.coefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, sCut, 0.5f);
+    for (auto& hpf : outputHPF) {
+		hpf.coefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, sCut, 0.5f);
+    }
 
 	filter.setCutoffFrequency(freq);
 	filter.setResonance(q);
@@ -222,7 +228,9 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 		amount = mix * 20.0f;
 
 		sCut = smoothedCut.getNextValue();
-        outputHPF.coefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, sCut, 0.5f);
+        for (auto& hpf : outputHPF) {
+			hpf.coefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, sCut, 0.5f);
+        }
 
 		noise = rand.nextFloat() * 2.0f - 1.0f;
         
@@ -235,7 +243,7 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 		if (lfoPhase >= twoPi) lfoPhase -= twoPi;
 
         // Crossfade between noise and sine
-		offset = noiseAmount * noise + sineAmount * sine;
+        offset = noiseAmount * noise + sineAmount * sine;
 
 		float readPosition = writePosition - delayInSamples + offset * amount;
 		while (readPosition < 0) readPosition += bufferSize;
@@ -253,7 +261,7 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 
             float inputSample = channelData[sample];
 			float outputSample = delayData[index0] * (1 - fraction) + delayData[index1] * fraction;
-            outputSample = outputHPF.processSample(outputSample) * mix;
+            outputSample = outputHPF[channel].processSample(outputSample) * mix;
             delayData[writePosition] = inputSample;
 			inputSample *= (1.0f - mix);
 
