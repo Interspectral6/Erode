@@ -33,9 +33,11 @@ An audio effect inspired by Ableton's Erosion, but can morph between noise and s
 ## Build Instructions
 
 - Currently only available for Windows
-- Requires [JUCE](https://juce.com/) (version 8.0.12+)
-- Open `Erode.sln` in Visual Studio
-- Build the project and copy the plugin to your plugin folder
+- Requires [JUCE](https://juce.com/) (version 8.0.12+) at `D:\JUCE`
+- Requires CMake 3.22+ and Visual Studio 2026 build tools
+- Configure: `cmake -S . -B build -G "Visual Studio 18 2026" -A x64`
+- Build: `cmake --build build --config Debug --parallel`
+- The Debug VST3 is copied to `D:\music\plugin\vst3`
 
 ## Usage Tips
 

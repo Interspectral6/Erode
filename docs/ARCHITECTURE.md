@@ -48,10 +48,10 @@ modulation frequency and width. Dragging the band edits `Freq` and `Width`.
 
 Define the dark UI palette and custom rotary slider drawing.
 
-`Erode.jucer`
+`CMakeLists.txt`
 
-JUCE project file. It defines modules, exporters, plugin settings, source files,
-and build targets.
+CMake build file. It defines JUCE location, plugin settings, source files,
+formats, compile definitions, and linked JUCE modules.
 
 ## Parameters
 
@@ -245,7 +245,7 @@ On mouse drag:
 
 ## UI Layout
 
-The editor has a fixed 2:1 aspect ratio.
+The editor has a fixed 2.5:1 aspect ratio.
 
 Top 40 percent:
 

@@ -13,9 +13,11 @@
 *.gch
 *.pdb
 
-# JUCE / Projucer
+# JUCE / build artifacts
 *.jucer~
 Builds/
+build*/
+.vs/
 
 # OS files
 .DS_Store
