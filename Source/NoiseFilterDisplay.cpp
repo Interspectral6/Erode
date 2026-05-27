@@ -18,7 +18,8 @@ NoiseFilterDisplay::NoiseFilterDisplay(ErodeAudioProcessor& p, juce::AudioProces
 
 void NoiseFilterDisplay::timerCallback()
 {
-    // Perform FFT for spectrum display
+    // Copy the most recent circular output samples into a linear FFT buffer.
+    // This keeps UI analysis separate from real-time audio processing.
     int outputWritePos = p.outputWritePos;
     auto& outputBuffer = p.outputBuffer;
     for (int i = 0; i < p.fftSize; ++i) {
@@ -35,6 +36,8 @@ void NoiseFilterDisplay::timerCallback()
         outMagnitudes[i] = juce::jmax(mag, outMagnitudes[i] * 0.97f); // peak hold smoothing
     }
 
+    // Repeat the same FFT analysis for the dry/input path. The display draws it
+    // dimmer than the wet/output path for quick before/after comparison.
     int inputWritePos = p.inputWritePos;
     auto& inputBuffer = p.inputBuffer;
     for (int i = 0; i < p.fftSize; ++i) {
@@ -60,11 +63,16 @@ void NoiseFilterDisplay::paint(juce::Graphics& g)
 
     // Draw output
     float binFreq = p.getSampleRate() / (float)p.fftSize;
+
+    // Frequency is drawn on a log scale, matching how the frequency parameter
+    // feels to musicians across 20 Hz - 20 kHz.
     auto freqToX = [area, binFreq](float hz) {
         float norm = std::log10(hz / 20.0f) / std::log10(20000.0f / 20.0f);
         return area.getX() + norm * area.getWidth();
 		};
     float maxDb = -20.0f, minDb = -120.0f;
+
+    // Magnitudes are converted to dB and clamped into the visible display range.
     auto magToY = [area, minDb, maxDb](float mag) {
         float db = juce::Decibels::gainToDecibels(mag, minDb);
         float norm = juce::jlimit(0.0f, 1.0f, (db - minDb) / (maxDb - minDb));
@@ -97,6 +105,9 @@ void NoiseFilterDisplay::paint(juce::Graphics& g)
 
     // Map freq (20Hz-20kHz) to X
     float centerX = freqToX(freq);
+
+    // The blue region is an editable visual proxy for the modulation band:
+    // horizontal position = frequency, width = noise/sine morph width.
     float bandWidth = area.getWidth() * juce::jmap(width, 0.0f, 1.0f, 0.01f, 0.5f);
 
     // Draw bandpass region
@@ -111,7 +122,7 @@ void NoiseFilterDisplay::resized()
 
 void NoiseFilterDisplay::mouseDown(const juce::MouseEvent& e)
 {
-    // Get current freq/width
+    // Only begin a drag if the user starts inside the visible modulation band.
     float freq = apvts.getRawParameterValue("freq")->load();
     float width = apvts.getRawParameterValue("width")->load();
 
@@ -141,17 +152,18 @@ void NoiseFilterDisplay::mouseDrag(const juce::MouseEvent& e)
 
     auto area = getLocalBounds().toFloat();
 
-    // Horizontal drag: freq
+    // Horizontal drag changes frequency on the same log scale used for drawing.
     float dx = e.position.x - dragStart.x;
     float freqNorm = std::log10(startFreq / 20.0f) / std::log10(20000.0f / 20.0f);
     freqNorm += dx / area.getWidth();
     freqNorm = juce::jlimit(0.0f, 1.0f, freqNorm);
     float newFreq = 20.0f * std::pow(20000.0f / 20.0f, freqNorm);
 
-    // Vertical drag: width
+    // Dragging up widens the band/noise component; dragging down narrows it.
     float dy = e.position.y - dragStart.y;
     float newWidth = juce::jlimit(0.0f, 1.0f, startWidth - dy / area.getHeight());
 
+    // Notify the host so automation recording and undo systems see the gesture.
     auto* freqParam = apvts.getParameter("freq");
     auto* widthParam = apvts.getParameter("width");
     if (freqParam)

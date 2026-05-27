@@ -1,6 +1,8 @@
 #include "ErodeLookAndFeel.h"
 
 ErodeLookAndFeel::ErodeLookAndFeel() {
+    // Centralized palette so the plugin keeps a consistent dark theme across
+    // sliders, text boxes, combo boxes, and menus.
 	setColour(juce::ResizableWindow::backgroundColourId, juce::Colour(0xff232323)); 
 	setColour(juce::Slider::rotarySliderFillColourId, juce::Colour(0xffb3e5fc));
 	setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colour(0xff444444));
@@ -18,6 +20,8 @@ ErodeLookAndFeel::ErodeLookAndFeel() {
 void ErodeLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height, float sliderPos,
                                        const float rotaryStartAngle, const float rotaryEndAngle, juce::Slider& slider)
 {
+    // Custom rotary style draws only background/value arcs. Removing the thumb
+    // gives the controls a cleaner meter-like look.
     auto outline = slider.findColour (juce::Slider::rotarySliderOutlineColourId);
     auto fill    = slider.findColour (juce::Slider::rotarySliderFillColourId);
 

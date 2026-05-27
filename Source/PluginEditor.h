@@ -33,16 +33,19 @@ private:
     juce::Slider freqSlider;
 	juce::Slider widthSlider;
 	juce::Slider amountSlider;
+    juce::Slider feedbackSlider;
 	juce::Slider cutSlider;
 
 	juce::Label freqLabel;
 	juce::Label widthLabel;
 	juce::Label amountLabel;
+    juce::Label feedbackLabel;
 	juce::Label cutLabel;
 
 	juce::AudioProcessorValueTreeState::SliderAttachment freqAttachment;
 	juce::AudioProcessorValueTreeState::SliderAttachment widthAttachment;
 	juce::AudioProcessorValueTreeState::SliderAttachment amountAttachment;
+    juce::AudioProcessorValueTreeState::SliderAttachment feedbackAttachment;
 	juce::AudioProcessorValueTreeState::SliderAttachment cutAttachment;
 	ErodeLookAndFeel erodeLnf;
 

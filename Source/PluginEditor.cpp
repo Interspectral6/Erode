@@ -15,9 +15,12 @@ ErodeAudioProcessorEditor::ErodeAudioProcessorEditor (ErodeAudioProcessor& p)
     freqAttachment(p.getAPVTS(), "freq", freqSlider),
 	widthAttachment(p.getAPVTS(), "width", widthSlider),
 	amountAttachment(p.getAPVTS(), "amount", amountSlider),
+    feedbackAttachment(p.getAPVTS(), "feedback", feedbackSlider),
 	cutAttachment(p.getAPVTS(), "cut", cutSlider),
 	filterDisplay(p, p.getAPVTS())
 {
+    // Each slider is attached directly to APVTS so host automation, preset state,
+    // and UI edits all share the same parameter source.
     freqSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
     freqSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
 	freqSlider.setTooltip("Center frequency of the modulator");
@@ -43,6 +46,15 @@ ErodeAudioProcessorEditor::ErodeAudioProcessorEditor (ErodeAudioProcessor& p)
 	amountLabel.setJustificationType(juce::Justification::centred);
 	addAndMakeVisible(amountLabel);
 
+    feedbackSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+    feedbackSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
+    feedbackSlider.setTooltip("Amount of delayed signal fed back into the delay input");
+    addAndMakeVisible(feedbackSlider);
+    feedbackLabel.setText("Feedback", juce::dontSendNotification);
+    feedbackLabel.attachToComponent(&feedbackSlider, false);
+    feedbackLabel.setJustificationType(juce::Justification::centred);
+    addAndMakeVisible(feedbackLabel);
+
 	cutSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
     cutSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
 	addAndMakeVisible(cutSlider);
@@ -53,10 +65,13 @@ ErodeAudioProcessorEditor::ErodeAudioProcessorEditor (ErodeAudioProcessor& p)
 	addAndMakeVisible(filterDisplay);
 
 	setLookAndFeel(&erodeLnf);
-    setSize(400, 200);
+
+    // Fixed aspect ratio keeps the spectrum and five-knob layout readable while
+    // still allowing hosts to resize the plugin window.
+    setSize(500, 200);
     setResizable(true, true);
-	setResizeLimits(400, 200, 1200, 600);
-    getConstrainer()->setFixedAspectRatio(2.0);
+	setResizeLimits(500, 200, 1400, 560);
+    getConstrainer()->setFixedAspectRatio(2.5);
 }
 
 ErodeAudioProcessorEditor::~ErodeAudioProcessorEditor()
@@ -73,25 +88,30 @@ void ErodeAudioProcessorEditor::paint (juce::Graphics& g)
 void ErodeAudioProcessorEditor::resized()
 {
 	auto area = getLocalBounds().toFloat();
+
+    // Top strip is the interactive spectrum/filter display; bottom area is the
+    // parameter control row.
 	filterDisplay.setBounds(area.removeFromTop(getHeight() * 0.4f).toNearestInt());
 
-	int textBoxWidth = getWidth() * 0.14f;
-	int textBoxHeight = getHeight() * 0.1f;
-	for (auto* s : { &freqSlider, &widthSlider, &amountSlider, &cutSlider })
+    // Scale text boxes and labels with window height so the UI remains legible
+    // at the minimum and maximum resize limits.
+	int textBoxWidth = juce::roundToInt(getWidth() * 0.14f);
+	int textBoxHeight = juce::roundToInt(getHeight() * 0.1f);
+	for (auto* s : { &freqSlider, &widthSlider, &amountSlider, &feedbackSlider, &cutSlider })
 		s->setTextBoxStyle(juce::Slider::TextBoxBelow, false, textBoxWidth, textBoxHeight);
 	
 	float fontSize = getHeight() * 0.08f;
-	for (auto* l : { &freqLabel, &widthLabel, &amountLabel, &cutLabel })
-		l->setFont(juce::Font(fontSize));
+	for (auto* l : { &freqLabel, &widthLabel, &amountLabel, &feedbackLabel, &cutLabel })
+		l->setFont(juce::Font(juce::FontOptions(fontSize)));
 
 	float margin = 0.07f;
 	area.reduce(area.getWidth() * margin, area.getHeight() * margin * 2);
 
 	float sliderPad = area.getWidth() * 0.025f;
-	float sliderWidth = area.getWidth() / 4.0f;
-	float sliderHeight = area.getHeight();
+	float sliderWidth = area.getWidth() / 5.0f;
 
-	for (int i = 0; i < 4; ++i)
+    // Five equal columns, one per parameter.
+	for (int i = 0; i < 5; ++i)
 	{
 		auto col = area.withTrimmedLeft(i * sliderWidth).withWidth(sliderWidth);
 		col = col.reduced(sliderPad, 0).withTrimmedTop(sliderPad * 2);
@@ -101,7 +121,8 @@ void ErodeAudioProcessorEditor::resized()
 		case 0: freqSlider.setBounds(col.toNearestInt()); break;
 		case 1: widthSlider.setBounds(col.toNearestInt()); break;
 		case 2: amountSlider.setBounds(col.toNearestInt()); break;
-		case 3: cutSlider.setBounds(col.toNearestInt()); break;
+        case 3: feedbackSlider.setBounds(col.toNearestInt()); break;
+		case 4: cutSlider.setBounds(col.toNearestInt()); break;
 		}
 	}
 }

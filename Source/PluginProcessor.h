@@ -55,6 +55,8 @@ public:
 
 	juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }
 
+    // FFT buffers are exposed to the editor so the spectrum display can read
+    // recent input/output samples without touching the live audio buffer.
     static constexpr int fftOrder = 11;
 	static constexpr int fftSize = 1 << fftOrder; // fftSize = 2^fftOrder
 
@@ -69,12 +71,15 @@ private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioProcessorValueTreeState apvts;
 
+    // Short delay line used as the core "erosion" stage. The read position is
+    // modulated by filtered noise/sine to create rough pitch and phase movement.
     juce::AudioBuffer<float> delayBuffer;
     int writePosition = 0;
     float lfoPhase = 0.0f;
     juce::Random rand;
     juce::dsp::StateVariableTPTFilter<float> filter;
     juce::SmoothedValue<float> smoothedAmount;
+    juce::SmoothedValue<float> smoothedFeedback;
 	juce::SmoothedValue<float> smoothedCut;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ErodeAudioProcessor)

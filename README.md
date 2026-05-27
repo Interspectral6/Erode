@@ -11,6 +11,7 @@ An audio effect inspired by Ableton's Erosion, but can morph between noise and s
 - Real-time spectrum display (the dimmer one represents the dry signal and the brighter one represents the wet signal)
 - Drag the band in the display to set frequency (X) and width (Y)
 - Morph between noise and sine modulation through width
+- Feedback control for thicker resonant erosion
 - High-pass filter for output cleanup
 - Clean, resizable UI
 
@@ -19,6 +20,7 @@ An audio effect inspired by Ableton's Erosion, but can morph between noise and s
 - **Freq:** Center frequency of the modulator/filter (20 Hz - 20 kHz)
 - **Width:** Bandwidth of the filter (0 = narrow/sine, 1 = wide/noise)
 - **Amount:** Modulation depth and wet/dry mix
+- **Feedback:** Returns delayed signal into the delay input for resonant smear
 - **Cut:** Output high-pass filter cutoff (20 Hz - 20 kHz)
 - **Spectrum Display:**  
   - Drag band horizontally to change frequency  

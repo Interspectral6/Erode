@@ -14,23 +14,40 @@ constexpr float twoPi = juce::MathConstants<float>::twoPi;
 juce::AudioProcessorValueTreeState::ParameterLayout ErodeAudioProcessor::createParameterLayout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+    // Main modulation frequency. Exponential skew gives useful resolution in
+    // low frequencies while still covering the full audible range.
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "freq",
         "Freq",
         juce::NormalisableRange<float>(20.0f, 20000.0f, 1.0f, 0.3f),
         1000.0f));
     
+    // Width controls two things at once:
+    // - filter Q for the noise modulator
+    // - crossfade between sine-like and noise-like delay modulation
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "width",
         "Width",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f),
         0.5f));
 
+    // Amount acts as both wet/dry mix and modulation depth.
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "amount",
         "Amount",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f),
         0.5f));
+
+    // Feedback returns delayed signal to the delay input. It is capped below
+    // unity to reduce runaway gain in the modulated delay loop.
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "feedback",
+        "Feedback",
+        juce::NormalisableRange<float>(0.0f, 0.95f, 0.01f),
+        0.0f));
+
+    // Output high-pass cleanup after the modulated delay stage.
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "cut",
         "Cut",
@@ -109,27 +126,32 @@ int ErodeAudioProcessor::getCurrentProgram()
 
 void ErodeAudioProcessor::setCurrentProgram (int index)
 {
+    juce::ignoreUnused(index);
 }
 
 const juce::String ErodeAudioProcessor::getProgramName (int index)
 {
+    juce::ignoreUnused(index);
     return {};
 }
 
 void ErodeAudioProcessor::changeProgramName (int index, const juce::String& newName)
 {
+    juce::ignoreUnused(index, newName);
 }
 
 //==============================================================================
 void ErodeAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-	const int numSamples = static_cast<int>(sampleRate * 0.1); // 100 ms max delay
+    // The effect currently uses a very short fixed delay window. This is enough
+    // for the erosion-style phase/pitch modulation without sounding like an echo.
     delayBuffer.setSize(getTotalNumOutputChannels(), 100);
     delayBuffer.clear();
 	
     writePosition = 0;
     lfoPhase = 0.0f;
 
+    // Band-pass filter shapes white noise into a narrow or wide modulator band.
     juce::dsp::ProcessSpec spec;
     spec.sampleRate = sampleRate;
     spec.maximumBlockSize = samplesPerBlock;
@@ -142,7 +164,8 @@ void ErodeAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 		hpf.coefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass(sampleRate, 2000.0f, 0.5f);
     }
  
-    
+    // Circular mono buffers feed the editor spectrum display. Audio thread writes
+    // them continuously; UI thread reads snapshots in NoiseFilterDisplay.
 	outputBuffer.setSize(1, fftSize);
     outputBuffer.clear();
     outputWritePos = 0;
@@ -152,6 +175,12 @@ void ErodeAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 
 	smoothedAmount.reset(sampleRate, 0.05);
 	smoothedAmount.setCurrentAndTargetValue(apvts.getRawParameterValue("amount")->load());
+
+    smoothedFeedback.reset(sampleRate, 0.05);
+    smoothedFeedback.setCurrentAndTargetValue(apvts.getRawParameterValue("feedback")->load());
+
+    smoothedCut.reset(sampleRate, 0.05);
+    smoothedCut.setCurrentAndTargetValue(apvts.getRawParameterValue("cut")->load());
 }
 
 void ErodeAudioProcessor::releaseResources()
@@ -184,13 +213,14 @@ bool ErodeAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) co
 
 void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
+    juce::ignoreUnused(midiMessages);
     juce::ScopedNoDenormals noDenormals;
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
     const int numSamples = buffer.getNumSamples();
     const int bufferSize = delayBuffer.getNumSamples();
-    const float sampleRate = getSampleRate();
+    const float sampleRate = static_cast<float>(getSampleRate());
     float offset = 0.0f;
     float noise = 0.0f;
     float sine = 0.0f;
@@ -198,12 +228,19 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 	float sAmount = smoothedAmount.getNextValue();
 	float mix = sAmount;
     float amount = mix * 20.0f;
+    smoothedFeedback.setTargetValue(apvts.getRawParameterValue("feedback")->load());
+    float feedback = smoothedFeedback.getNextValue();
     int delayInSamples = 30;
     float freq = apvts.getRawParameterValue("freq")->load();
     float width = apvts.getRawParameterValue("width")->load();
+
+    // Width maps inversely to Q: narrow width gives a resonant, sine-like band;
+    // wide width gives broadband noisy modulation.
     float minQ = 0.5f;
     float maxQ = 30.0f;
     float q = minQ * std::pow(maxQ / minQ, 1.0f - width);
+
+    // Perceptual crossfade. Width near 0 favors sine; width near 1 favors noise.
     float sineAmount = 1.0f - std::pow(width, 0.7f); // Lower coefficient means less sine
     float noiseAmount = 1.0f - sineAmount;
 	smoothedCut.setTargetValue(apvts.getRawParameterValue("cut")->load());
@@ -222,10 +259,12 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         buffer.clear (i, 0, numSamples);
 
     for (int sample = 0; sample < numSamples; ++sample) {
-        // Smoothing per sample
+        // Update smoothed parameters per sample so automation changes do not
+        // click, especially for mix/depth and high-pass cutoff.
 		sAmount = smoothedAmount.getNextValue();
 		mix = sAmount;
 		amount = mix * 20.0f;
+        feedback = smoothedFeedback.getNextValue();
 
 		sCut = smoothedCut.getNextValue();
         for (auto& hpf : outputHPF) {
@@ -245,6 +284,8 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         // Crossfade between noise and sine
         offset = noiseAmount * noise + sineAmount * sine;
 
+        // Read from a fixed short delay, then push/pull the read position by the
+        // modulator. Fractional interpolation avoids coarse zipper artifacts.
 		float readPosition = writePosition - delayInSamples + offset * amount;
 		while (readPosition < 0) readPosition += bufferSize;
 		while (readPosition >= bufferSize) readPosition -= bufferSize;
@@ -260,9 +301,13 @@ void ErodeAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 			auto* delayData = delayBuffer.getWritePointer(channel);
 
             float inputSample = channelData[sample];
-			float outputSample = delayData[index0] * (1 - fraction) + delayData[index1] * fraction;
-            outputSample = outputHPF[channel].processSample(outputSample) * mix;
-            delayData[writePosition] = inputSample;
+			float delayedSample = delayData[index0] * (1 - fraction) + delayData[index1] * fraction;
+            float outputSample = outputHPF[channel].processSample(delayedSample) * mix;
+
+            // Feedback uses the pre-mix delayed sample so the Amount knob can
+            // change wet/dry balance without changing loop stability.
+            float feedbackSample = std::tanh(delayedSample * feedback);
+            delayData[writePosition] = inputSample + feedbackSample;
 			inputSample *= (1.0f - mix);
 
 			outputMonoSum += outputSample;
