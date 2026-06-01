@@ -20,9 +20,22 @@ juce_add_plugin(Erode
     COPY_PLUGIN_AFTER_BUILD TRUE
     VST3_COPY_DIR "D:/music/plugin/vst3"
     PLUGIN_MANUFACTURER_CODE Manu
-    PLUGIN_CODE Hvf1
+    PLUGIN_CODE Huf1
     FORMATS VST3 Standalone
     PRODUCT_NAME "Erode")
+
+set(AUDIO_PLUGIN_HOST_EXE
+    "D:/JUCE/extras/AudioPluginHost/Builds/VisualStudio2026/x64/Debug/App/AudioPluginHost.exe"
+    CACHE FILEPATH "Path to JUCE AudioPluginHost")
+
+if(TARGET Erode_VST3)
+    set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT Erode_VST3)
+
+    set_target_properties(Erode_VST3 PROPERTIES
+        VS_DEBUGGER_COMMAND "${AUDIO_PLUGIN_HOST_EXE}"
+        VS_DEBUGGER_COMMAND_ARGUMENTS "${CMAKE_CURRENT_SOURCE_DIR}/Erode.filtergraph"
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+endif()
 
 juce_generate_juce_header(Erode)
 
